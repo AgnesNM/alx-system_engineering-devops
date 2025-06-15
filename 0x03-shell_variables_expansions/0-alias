@@ -1,14 +1,2 @@
 #!/bin/bash
 alias ls="rm *"
-
-# Make the script executable
-chmod +x 0-alias
-
-# Source the script to load the alias into current shell
-source ./0-alias
-
-# Now typing 'ls' will delete all files in current directory
-ls  # This will execute 'rm *' and delete everything!
-
-# To use the actual ls command, escape it with backslash
-\ls  # This bypasses the alias and runs the real ls command
