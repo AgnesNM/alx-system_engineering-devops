@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# Generate RSA key pair with specified requirements
+ssh-keygen -t rsa -b 4096 -f school -N betty
