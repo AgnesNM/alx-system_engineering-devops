@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Script that configures Nginx with a custom HTTP response header
+# shellcheck disable=SC2154
+
+# Update package index
+apt-get update -y
+
+# Install nginx
+apt-get install nginx -y
+
+# Create a simple HTML page with "Hello World!"
+echo "Hello World!" > /var/www/html/index.html
+
+# Configure Nginx with custom HTTP header X-Served-By
+# Add the custom header to the server block using the hostname
+sed -i '/listen 80 default_server;/a\\tadd_header X-Served-By $hostname;' /etc/nginx/sites-available/default
+
+# Configure Nginx with 301 redirect for /redirect_me (from previous tasks)
+sed -i '/location \/ {/a\\tlocation /redirect_me {\n\t\treturn 301 https://www.youtube.com/watch?v=QH2-TGUlwu4;\n\t}' /etc/nginx/sites-available/default
+
+# Start nginx service (without using systemctl)
+service nginx start
+
+# Enable nginx to start on boot
+update-rc.d nginx enable
+
+# Restart nginx to apply configuration changes
+service nginx restart
