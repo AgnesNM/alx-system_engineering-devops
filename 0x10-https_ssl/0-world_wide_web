@@ -7,32 +7,30 @@ get_subdomain_info() {
     local subdomain="$2"
     local full_domain="${subdomain}.${domain}"
     
-    # Use dig to get DNS information and extract record type and destination
-    local dig_output
-    dig_output=$(dig "$full_domain" | grep -A1 'ANSWER SECTION:' | tail -n1)
+    # Use dig to get DNS information and parse with awk
+    # shellcheck disable=SC2086
+    local result=$(dig $full_domain | grep -A1 'ANSWER SECTION:' | tail -n1 | awk '{print $4 " " $5}')
     
-    if [ -n "$dig_output" ]; then
-        local record_type
-        local destination
-        record_type=$(echo "$dig_output" | awk '{print $4}')
-        destination=$(echo "$dig_output" | awk '{print $5}')
+    if [ -n "$result" ]; then
+        local record_type=$(echo "$result" | awk '{print $1}')
+        local destination=$(echo "$result" | awk '{print $2}')
         
         echo "The subdomain $subdomain is a $record_type record and points to $destination"
     fi
 }
 
 # Main script logic
-domain="$1"
-subdomain="$2"
+domain=$1
+subdomain=$2
 
 # Check if subdomain parameter is provided
 if [ -z "$subdomain" ]; then
     # Display information for default subdomains in specified order
-    get_subdomain_info "$domain" "www"
-    get_subdomain_info "$domain" "lb-01"
-    get_subdomain_info "$domain" "web-01"
-    get_subdomain_info "$domain" "web-02"
+    get_subdomain_info $domain "www"
+    get_subdomain_info $domain "lb-01"
+    get_subdomain_info $domain "web-01"
+    get_subdomain_info $domain "web-02"
 else
     # Display information for specified subdomain
-    get_subdomain_info "$domain" "$subdomain"
+    get_subdomain_info $domain $subdomain
 fi
