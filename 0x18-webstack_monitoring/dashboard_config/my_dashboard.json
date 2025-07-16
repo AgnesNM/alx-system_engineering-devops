@@ -1,0 +1,223 @@
+{
+  "title": "Web Infrastructure Monitoring - XX-web-01",
+  "description": "Comprehensive monitoring dashboard for web-01 server performance metrics",
+  "widgets": [
+    {
+      "id": 1,
+      "definition": {
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:system.cpu.user{host:XX-web-01}",
+            "display_type": "line",
+            "style": {
+              "palette": "dog_classic",
+              "line_type": "solid",
+              "line_width": "normal"
+            }
+          }
+        ],
+        "title": "CPU Usage (%)",
+        "title_size": "16",
+        "title_align": "left",
+        "time": {
+          "live_span": "1h"
+        },
+        "yaxis": {
+          "min": "0",
+          "max": "100",
+          "label": "CPU %"
+        },
+        "markers": [
+          {
+            "value": "y = 80",
+            "display_type": "error dashed"
+          },
+          {
+            "value": "y = 70",
+            "display_type": "warning dashed"
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "definition": {
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:system.mem.pct_usable{host:XX-web-01}",
+            "display_type": "line",
+            "style": {
+              "palette": "cool",
+              "line_type": "solid",
+              "line_width": "normal"
+            }
+          }
+        ],
+        "title": "Memory Usage (%)",
+        "title_size": "16",
+        "title_align": "left",
+        "time": {
+          "live_span": "1h"
+        },
+        "yaxis": {
+          "min": "0",
+          "max": "100",
+          "label": "Memory %"
+        },
+        "markers": [
+          {
+            "value": "y = 20",
+            "display_type": "error dashed"
+          },
+          {
+            "value": "y = 30",
+            "display_type": "warning dashed"
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "definition": {
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:system.disk.in_use{host:XX-web-01} * 100",
+            "display_type": "line",
+            "style": {
+              "palette": "warm",
+              "line_type": "solid",
+              "line_width": "normal"
+            }
+          }
+        ],
+        "title": "Disk Usage (%)",
+        "title_size": "16",
+        "title_align": "left",
+        "time": {
+          "live_span": "1h"
+        },
+        "yaxis": {
+          "min": "0",
+          "max": "100",
+          "label": "Disk %"
+        },
+        "markers": [
+          {
+            "value": "y = 80",
+            "display_type": "error dashed"
+          },
+          {
+            "value": "y = 70",
+            "display_type": "warning dashed"
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "definition": {
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:system.load.1{host:XX-web-01}",
+            "display_type": "line",
+            "style": {
+              "palette": "purple",
+              "line_type": "solid",
+              "line_width": "normal"
+            }
+          }
+        ],
+        "title": "System Load Average (1min)",
+        "title_size": "16",
+        "title_align": "left",
+        "time": {
+          "live_span": "1h"
+        },
+        "yaxis": {
+          "min": "0",
+          "label": "Load"
+        },
+        "markers": [
+          {
+            "value": "y = 2",
+            "display_type": "error dashed"
+          },
+          {
+            "value": "y = 1.5",
+            "display_type": "warning dashed"
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "definition": {
+        "type": "timeseries",
+        "requests": [
+          {
+            "q": "avg:system.net.bytes_rcvd{host:XX-web-01}",
+            "display_type": "line",
+            "style": {
+              "palette": "dog_classic",
+              "line_type": "solid",
+              "line_width": "normal"
+            }
+          },
+          {
+            "q": "avg:system.net.bytes_sent{host:XX-web-01}",
+            "display_type": "line",
+            "style": {
+              "palette": "dog_classic",
+              "line_type": "solid",
+              "line_width": "normal"
+            }
+          }
+        ],
+        "title": "Network I/O (bytes/sec)",
+        "title_size": "16",
+        "title_align": "left",
+        "time": {
+          "live_span": "1h"
+        },
+        "yaxis": {
+          "min": "0",
+          "label": "Bytes/sec"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "definition": {
+        "type": "query_value",
+        "requests": [
+          {
+            "q": "avg:system.uptime{host:XX-web-01}",
+            "aggregator": "last"
+          }
+        ],
+        "title": "System Uptime (seconds)",
+        "title_size": "16",
+        "title_align": "left",
+        "time": {
+          "live_span": "1h"
+        },
+        "autoscale": true,
+        "precision": 0
+      }
+    }
+  ],
+  "layout_type": "ordered",
+  "is_read_only": false,
+  "notify_list": [],
+  "template_variables": [
+    {
+      "name": "host",
+      "prefix": "host",
+      "default": "XX-web-01"
+    }
+  ]
+}
