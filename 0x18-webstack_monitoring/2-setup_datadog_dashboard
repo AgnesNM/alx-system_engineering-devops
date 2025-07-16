@@ -1,125 +1,103 @@
 #!/usr/bin/env bash
-# Create a custom dashboard for monitoring web infrastructure
+# Set up monitors for disk read and write requests per second
 
-# API credentials (replace with your actual keys)
-API_KEY="1234567890abcdef1234567890abcdef12"
-APP_KEY="abcdef1234567890abcdef1234567890abcdef12"
+# Replace with your actual API and Application keys
+API_KEY="your-api-key-here"
+APP_KEY="your-application-key-here"
 
-# Dashboard configuration file
-DASHBOARD_CONFIG="dashboard_config/my_dashboard.json"
+echo "Setting up Datadog monitors for disk I/O..."
 
-# Check if the dashboard configuration exists
-if [ ! -f "$DASHBOARD_CONFIG" ]; then
-    echo "Error: Dashboard configuration file not found at $DASHBOARD_CONFIG"
-    exit 1
-fi
-
-# Create the dashboard using Datadog API
-echo "Creating dashboard..."
-RESPONSE=$(curl -X POST "https://api.datadoghq.com/api/v1/dashboard" \
+# Monitor for disk read requests per second
+echo "Creating monitor for disk read requests..."
+READ_RESPONSE=$(curl -s -X POST "https://api.datadoghq.com/api/v1/monitor" \
      -H "Content-Type: application/json" \
      -H "DD-API-KEY: $API_KEY" \
      -H "DD-APPLICATION-KEY: $APP_KEY" \
-     -d @"$DASHBOARD_CONFIG")
+     -d '{
+       "type": "metric alert",
+       "query": "avg(last_5m):avg:system.io.r_s{*} > 100",
+       "name": "High Disk Read Requests",
+       "message": "Disk read requests per second is high: {{value}} reads/sec on {{host.name}}.\n\nThis may indicate:\n- Heavy database queries\n- Large file operations\n- Memory pressure causing swap usage\n\nConsider investigating disk I/O patterns and potentially scaling storage resources.",
+       "tags": ["service:system", "team:infrastructure", "alert:disk-io"],
+       "options": {
+         "thresholds": {
+           "critical": 100,
+           "warning": 80
+         },
+         "notify_no_data": false,
+         "renotify_interval": 60,
+         "timeout_h": 0,
+         "include_tags": true,
+         "require_full_window": false,
+         "new_host_delay": 300,
+         "evaluation_delay": 60
+       }
+     }')
 
-# Check if the request was successful
-if echo "$RESPONSE" | grep -q '"id"'; then
-    DASHBOARD_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*' | cut -d'"' -f4)
-    echo "✓ Dashboard created successfully!"
-    echo "Dashboard ID: $DASHBOARD_ID"
-    echo "Access your dashboard at: https://app.datadoghq.com/dashboard/$DASHBOARD_ID"
+# Check if read monitor was created successfully
+if echo "$READ_RESPONSE" | grep -q '"id"'; then
+    READ_MONITOR_ID=$(echo "$READ_RESPONSE" | grep -o '"id":[0-9]*' | cut -d':' -f2)
+    echo "✓ Disk read monitor created successfully (ID: $READ_MONITOR_ID)"
 else
-    echo "✗ Failed to create dashboard"
-    echo "Response: $RESPONSE"
-    exit 1
+    echo "✗ Failed to create disk read monitor"
+    echo "Response: $READ_RESPONSE"
 fi
 
-# Create monitors for alerting
-echo "Creating monitors..."
+echo ""
+echo "Creating monitor for disk write requests..."
 
-# CPU usage monitor
-curl -X POST "https://api.datadoghq.com/api/v1/monitor" \
+# Monitor for disk write requests per second  
+WRITE_RESPONSE=$(curl -s -X POST "https://api.datadoghq.com/api/v1/monitor" \
      -H "Content-Type: application/json" \
      -H "DD-API-KEY: $API_KEY" \
      -H "DD-APPLICATION-KEY: $APP_KEY" \
      -d '{
        "type": "metric alert",
-       "query": "avg(last_5m):avg:system.cpu.user{host:XX-web-01} > 80",
-       "name": "High CPU Usage on XX-web-01",
-       "message": "CPU usage is above 80% on XX-web-01",
-       "tags": ["env:production", "role:webserver"],
+       "query": "avg(last_5m):avg:system.io.w_s{*} > 50",
+       "name": "High Disk Write Requests",
+       "message": "Disk write requests per second is high: {{value}} writes/sec on {{host.name}}.\n\nThis may indicate:\n- Heavy logging activity\n- Database write operations\n- File uploads/downloads\n- Backup operations\n\nConsider investigating write patterns and potentially optimizing I/O or scaling storage.",
+       "tags": ["service:system", "team:infrastructure", "alert:disk-io"],
        "options": {
          "thresholds": {
-           "critical": 80,
-           "warning": 70
+           "critical": 50,
+           "warning": 40
          },
          "notify_no_data": false,
-         "renotify_interval": 0
+         "renotify_interval": 60,
+         "timeout_h": 0,
+         "include_tags": true,
+         "require_full_window": false,
+         "new_host_delay": 300,
+         "evaluation_delay": 60
        }
-     }'
+     }')
 
-# Memory usage monitor
-curl -X POST "https://api.datadoghq.com/api/v1/monitor" \
-     -H "Content-Type: application/json" \
-     -H "DD-API-KEY: $API_KEY" \
-     -H "DD-APPLICATION-KEY: $APP_KEY" \
-     -d '{
-       "type": "metric alert",
-       "query": "avg(last_5m):avg:system.mem.pct_usable{host:XX-web-01} < 20",
-       "name": "High Memory Usage on XX-web-01",
-       "message": "Memory usage is above 80% on XX-web-01",
-       "tags": ["env:production", "role:webserver"],
-       "options": {
-         "thresholds": {
-           "critical": 20,
-           "warning": 30
-         },
-         "notify_no_data": false,
-         "renotify_interval": 0
-       }
-     }'
+# Check if write monitor was created successfully
+if echo "$WRITE_RESPONSE" | grep -q '"id"'; then
+    WRITE_MONITOR_ID=$(echo "$WRITE_RESPONSE" | grep -o '"id":[0-9]*' | cut -d':' -f2)
+    echo "✓ Disk write monitor created successfully (ID: $WRITE_MONITOR_ID)"
+else
+    echo "✗ Failed to create disk write monitor"
+    echo "Response: $WRITE_RESPONSE"
+fi
 
-# Disk usage monitor
-curl -X POST "https://api.datadoghq.com/api/v1/monitor" \
-     -H "Content-Type: application/json" \
-     -H "DD-API-KEY: $API_KEY" \
-     -H "DD-APPLICATION-KEY: $APP_KEY" \
-     -d '{
-       "type": "metric alert",
-       "query": "avg(last_5m):avg:system.disk.in_use{host:XX-web-01} > 0.8",
-       "name": "High Disk Usage on XX-web-01",
-       "message": "Disk usage is above 80% on XX-web-01",
-       "tags": ["env:production", "role:webserver"],
-       "options": {
-         "thresholds": {
-           "critical": 0.8,
-           "warning": 0.7
-         },
-         "notify_no_data": false,
-         "renotify_interval": 0
-       }
-     }'
-
-# Load average monitor
-curl -X POST "https://api.datadoghq.com/api/v1/monitor" \
-     -H "Content-Type: application/json" \
-     -H "DD-API-KEY: $API_KEY" \
-     -H "DD-APPLICATION-KEY: $APP_KEY" \
-     -d '{
-       "type": "metric alert",
-       "query": "avg(last_5m):avg:system.load.1{host:XX-web-01} > 2",
-       "name": "High System Load on XX-web-01",
-       "message": "System load is above 2.0 on XX-web-01",
-       "tags": ["env:production", "role:webserver"],
-       "options": {
-         "thresholds": {
-           "critical": 2,
-           "warning": 1.5
-         },
-         "notify_no_data": false,
-         "renotify_interval": 0
-       }
-     }'
-
-echo "✓ Monitors created successfully!"
-echo "Check your monitors at: https://app.datadoghq.com/monitors"
+echo ""
+echo "=== Summary ==="
+echo "✓ Disk I/O monitors setup complete!"
+echo ""
+echo "Monitors created:"
+echo "1. High Disk Read Requests (system.io.r_s)"
+echo "   - Warning: 80 reads/sec"
+echo "   - Critical: 100 reads/sec"
+echo ""
+echo "2. High Disk Write Requests (system.io.w_s)"
+echo "   - Warning: 40 writes/sec" 
+echo "   - Critical: 50 writes/sec"
+echo ""
+echo "View your monitors at: https://app.datadoghq.com/monitors"
+echo "Check metrics at: https://app.datadoghq.com/metric/explorer"
+echo ""
+echo "To test the monitors, you can generate disk activity:"
+echo "  sudo dd if=/dev/zero of=/tmp/test_write bs=1M count=100"
+echo "  sudo dd if=/tmp/test_write of=/dev/null bs=1M"
+echo "  rm /tmp/test_write"
