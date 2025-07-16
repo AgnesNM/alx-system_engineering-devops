@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# Create a custom dashboard for monitoring web infrastructure
+
+# API credentials (replace with your actual keys)
+API_KEY="1234567890abcdef1234567890abcdef12"
+APP_KEY="abcdef1234567890abcdef1234567890abcdef12"
+
+# Dashboard configuration file
+DASHBOARD_CONFIG="dashboard_config/my_dashboard.json"
+
+# Check if the dashboard configuration exists
+if [ ! -f "$DASHBOARD_CONFIG" ]; then
+    echo "Error: Dashboard configuration file not found at $DASHBOARD_CONFIG"
+    exit 1
+fi
+
+# Create the dashboard using Datadog API
+echo "Creating dashboard..."
+RESPONSE=$(curl -X POST "https://api.datadoghq.com/api/v1/dashboard" \
+     -H "Content-Type: application/json" \
+     -H "DD-API-KEY: $API_KEY" \
+     -H "DD-APPLICATION-KEY: $APP_KEY" \
+     -d @"$DASHBOARD_CONFIG")
+
+# Check if the request was successful
+if echo "$RESPONSE" | grep -q '"id"'; then
+    DASHBOARD_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*' | cut -d'"' -f4)
+    echo "✓ Dashboard created successfully!"
+    echo "Dashboard ID: $DASHBOARD_ID"
+    echo "Access your dashboard at: https://app.datadoghq.com/dashboard/$DASHBOARD_ID"
+else
+    echo "✗ Failed to create dashboard"
+    echo "Response: $RESPONSE"
+    exit 1
+fi
+
+# Create monitors for alerting
+echo "Creating monitors..."
+
+# CPU usage monitor
+curl -X POST "https://api.datadoghq.com/api/v1/monitor" \
+     -H "Content-Type: application/json" \
+     -H "DD-API-KEY: $API_KEY" \
+     -H "DD-APPLICATION-KEY: $APP_KEY" \
+     -d '{
+       "type": "metric alert",
+       "query": "avg(last_5m):avg:system.cpu.user{host:XX-web-01} > 80",
+       "name": "High CPU Usage on XX-web-01",
+       "message": "CPU usage is above 80% on XX-web-01",
+       "tags": ["env:production", "role:webserver"],
+       "options": {
+         "thresholds": {
+           "critical": 80,
+           "warning": 70
+         },
+         "notify_no_data": false,
+         "renotify_interval": 0
+       }
+     }'
+
+# Memory usage monitor
+curl -X POST "https://api.datadoghq.com/api/v1/monitor" \
+     -H "Content-Type: application/json" \
+     -H "DD-API-KEY: $API_KEY" \
+     -H "DD-APPLICATION-KEY: $APP_KEY" \
+     -d '{
+       "type": "metric alert",
+       "query": "avg(last_5m):avg:system.mem.pct_usable{host:XX-web-01} < 20",
+       "name": "High Memory Usage on XX-web-01",
+       "message": "Memory usage is above 80% on XX-web-01",
+       "tags": ["env:production", "role:webserver"],
+       "options": {
+         "thresholds": {
+           "critical": 20,
+           "warning": 30
+         },
+         "notify_no_data": false,
+         "renotify_interval": 0
+       }
+     }'
+
+# Disk usage monitor
+curl -X POST "https://api.datadoghq.com/api/v1/monitor" \
+     -H "Content-Type: application/json" \
+     -H "DD-API-KEY: $API_KEY" \
+     -H "DD-APPLICATION-KEY: $APP_KEY" \
+     -d '{
+       "type": "metric alert",
+       "query": "avg(last_5m):avg:system.disk.in_use{host:XX-web-01} > 0.8",
+       "name": "High Disk Usage on XX-web-01",
+       "message": "Disk usage is above 80% on XX-web-01",
+       "tags": ["env:production", "role:webserver"],
+       "options": {
+         "thresholds": {
+           "critical": 0.8,
+           "warning": 0.7
+         },
+         "notify_no_data": false,
+         "renotify_interval": 0
+       }
+     }'
+
+# Load average monitor
+curl -X POST "https://api.datadoghq.com/api/v1/monitor" \
+     -H "Content-Type: application/json" \
+     -H "DD-API-KEY: $API_KEY" \
+     -H "DD-APPLICATION-KEY: $APP_KEY" \
+     -d '{
+       "type": "metric alert",
+       "query": "avg(last_5m):avg:system.load.1{host:XX-web-01} > 2",
+       "name": "High System Load on XX-web-01",
+       "message": "System load is above 2.0 on XX-web-01",
+       "tags": ["env:production", "role:webserver"],
+       "options": {
+         "thresholds": {
+           "critical": 2,
+           "warning": 1.5
+         },
+         "notify_no_data": false,
+         "renotify_interval": 0
+       }
+     }'
+
+echo "✓ Monitors created successfully!"
+echo "Check your monitors at: https://app.datadoghq.com/monitors"
