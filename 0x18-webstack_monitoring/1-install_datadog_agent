@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Install and configure Datadog agent on web-01 server
+
+# Set your API key (replace with your actual API key)
+DD_API_KEY="1234567890abcdef1234567890abcdef12"
+
+# Download and install the Datadog agent
+DD_API_KEY="$DD_API_KEY" bash -c "$(curl -L https://s3.amazonaws.com/dd-agent/scripts/install_script.sh)"
+
+# Alternative installation method for Ubuntu/Debian
+# curl -fsSL https://keys.datadoghq.com/DATADOG_APT_KEY_CURRENT.public | sudo apt-key add -
+# echo "deb https://apt.datadoghq.com/ stable 7" | sudo tee /etc/apt/sources.list.d/datadog.list
+# sudo apt-get update
+# sudo apt-get install datadog-agent
+
+# Configure the agent with your API key
+sudo sh -c "sed 's/api_key:.*/api_key: $DD_API_KEY/' /etc/datadog-agent/datadog.yaml.example > /etc/datadog-agent/datadog.yaml"
+
+# Set the hostname to show as XX-web-01 in Datadog
+# Replace XX with your actual server identifier
+HOSTNAME="XX-web-01"
+sudo sed -i "s/# hostname: <HOSTNAME_NAME>/hostname: $HOSTNAME/" /etc/datadog-agent/datadog.yaml
+
+# Add some tags for better organization
+sudo sed -i "s/# tags:/tags:/" /etc/datadog-agent/datadog.yaml
+sudo sed -i "/tags:/a\\  - env:production\\n  - role:webserver\\n  - project:holberton" /etc/datadog-agent/datadog.yaml
+
+# Start the Datadog agent
+sudo systemctl start datadog-agent
+
+# Enable the agent to start on boot
+sudo systemctl enable datadog-agent
+
+# Wait a moment for the agent to start
+sleep 5
+
+# Check the status of the agent
+echo "Checking Datadog agent status..."
+sudo datadog-agent status
+
+# Verify the agent is running
+if sudo systemctl is-active --quiet datadog-agent; then
+    echo "✓ Datadog agent is running successfully"
+    echo "Your server should appear in Datadog within 5-10 minutes"
+    echo "Check https://app.datadoghq.com/infrastructure for your host: $HOSTNAME"
+else
+    echo "✗ Datadog agent failed to start"
+    echo "Check logs with: sudo journalctl -u datadog-agent"
+fi
