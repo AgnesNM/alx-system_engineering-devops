@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# This file documents the Datadog setup process and contains the API keys
+
+# Step 1: Sign up for Datadog at https://app.datadoghq.com
+# - Select US1 region during registration
+# - Complete the onboarding process
+# - Choose relevant integrations for your stack
+
+# Step 2: Get your API key
+# Navigate to: Organization Settings > API Keys
+# API Key: 1234567890abcdef1234567890abcdef12
+
+# Step 3: Create an Application key
+# Navigate to: Organization Settings > Application Keys
+# Click "New Key" and give it a descriptive name
+# Application Key: abcdef1234567890abcdef1234567890abcdef12
+
+# Step 4: Save these keys in your Intranet profile
+# API Key: 1234567890abcdef1234567890abcdef12
+# Application Key: abcdef1234567890abcdef1234567890abcdef12
+
+# Step 5: Verify your account is set to US1 region
+# Your Datadog URL should be: https://app.datadoghq.com
+# If you see a different URL, you may be in the wrong region
+
+# Next: Install the Datadog agent using the 1-install_datadog_agent script
