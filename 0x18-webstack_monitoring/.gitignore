@@ -1,0 +1,16 @@
+# Ignore sensitive files
+*_keys.txt
+*.key
+.env
+config.yaml
+*.log
+
+# Ignore backup files
+*~
+*.bak
+*.swp
+*.tmp
+
+# Ignore OS generated files
+.DS_Store
+Thumbs.db
