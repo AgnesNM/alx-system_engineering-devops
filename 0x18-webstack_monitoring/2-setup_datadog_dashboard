@@ -1,103 +1,215 @@
 #!/usr/bin/env bash
-# Set up monitors for disk read and write requests per second
+# Create a dashboard with 4 widgets and save the dashboard ID
 
-# Replace with your actual API and Application keys
-API_KEY="your-api-key-here"
-APP_KEY="your-application-key-here"
+# API credentials - replace with your actual keys
+API_KEY="${DD_API_KEY:-your-api-key-here}"
+APP_KEY="${DD_APPLICATION_KEY:-your-application-key-here}"
 
-echo "Setting up Datadog monitors for disk I/O..."
+# Check if API keys are set
+if [[ "$API_KEY" == "your-api-key-here" ]] || [[ "$APP_KEY" == "your-application-key-here" ]]; then
+    echo "Error: Please set your API keys in the script or as environment variables"
+    echo "Set DD_API_KEY and DD_APPLICATION_KEY environment variables, or edit this script"
+    exit 1
+fi
 
-# Monitor for disk read requests per second
-echo "Creating monitor for disk read requests..."
-READ_RESPONSE=$(curl -s -X POST "https://api.datadoghq.com/api/v1/monitor" \
+echo "Creating Datadog dashboard with 4 widgets..."
+
+# Create dashboard with 4 different widgets
+DASHBOARD_RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST "https://api.datadoghq.com/api/v1/dashboard" \
      -H "Content-Type: application/json" \
      -H "DD-API-KEY: $API_KEY" \
      -H "DD-APPLICATION-KEY: $APP_KEY" \
      -d '{
-       "type": "metric alert",
-       "query": "avg(last_5m):avg:system.io.r_s{*} > 100",
-       "name": "High Disk Read Requests",
-       "message": "Disk read requests per second is high: {{value}} reads/sec on {{host.name}}.\n\nThis may indicate:\n- Heavy database queries\n- Large file operations\n- Memory pressure causing swap usage\n\nConsider investigating disk I/O patterns and potentially scaling storage resources.",
-       "tags": ["service:system", "team:infrastructure", "alert:disk-io"],
-       "options": {
-         "thresholds": {
-           "critical": 100,
-           "warning": 80
+       "title": "System Performance Dashboard",
+       "description": "Comprehensive monitoring dashboard for system performance metrics",
+       "widgets": [
+         {
+           "definition": {
+             "type": "timeseries",
+             "requests": [
+               {
+                 "q": "avg:system.cpu.user{*}",
+                 "display_type": "line",
+                 "style": {
+                   "palette": "dog_classic",
+                   "line_type": "solid",
+                   "line_width": "normal"
+                 }
+               }
+             ],
+             "title": "CPU Usage (%)",
+             "title_size": "16",
+             "title_align": "left",
+             "time": {
+               "live_span": "1h"
+             },
+             "yaxis": {
+               "min": "0",
+               "max": "100",
+               "label": "CPU %"
+             }
+           },
+           "layout": {
+             "x": 0,
+             "y": 0,
+             "width": 6,
+             "height": 4
+           }
          },
-         "notify_no_data": false,
-         "renotify_interval": 60,
-         "timeout_h": 0,
-         "include_tags": true,
-         "require_full_window": false,
-         "new_host_delay": 300,
-         "evaluation_delay": 60
-       }
+         {
+           "definition": {
+             "type": "timeseries",
+             "requests": [
+               {
+                 "q": "avg:system.mem.pct_usable{*}",
+                 "display_type": "area",
+                 "style": {
+                   "palette": "cool",
+                   "line_type": "solid",
+                   "line_width": "normal"
+                 }
+               }
+             ],
+             "title": "Memory Usage (%)",
+             "title_size": "16",
+             "title_align": "left",
+             "time": {
+               "live_span": "1h"
+             },
+             "yaxis": {
+               "min": "0",
+               "max": "100",
+               "label": "Memory %"
+             }
+           },
+           "layout": {
+             "x": 6,
+             "y": 0,
+             "width": 6,
+             "height": 4
+           }
+         },
+         {
+           "definition": {
+             "type": "query_value",
+             "requests": [
+               {
+                 "q": "avg:system.load.1{*}",
+                 "aggregator": "avg"
+               }
+             ],
+             "title": "Current System Load",
+             "title_size": "16",
+             "title_align": "center",
+             "time": {
+               "live_span": "5m"
+             },
+             "autoscale": true,
+             "precision": 2
+           },
+           "layout": {
+             "x": 0,
+             "y": 4,
+             "width": 6,
+             "height": 3
+           }
+         },
+         {
+           "definition": {
+             "type": "timeseries",
+             "requests": [
+               {
+                 "q": "avg:system.io.r_s{*}",
+                 "display_type": "bars",
+                 "style": {
+                   "palette": "warm"
+                 }
+               },
+               {
+                 "q": "avg:system.io.w_s{*}",
+                 "display_type": "bars",
+                 "style": {
+                   "palette": "orange"
+                 }
+               }
+             ],
+             "title": "Disk I/O Operations (reads/writes per second)",
+             "title_size": "16",
+             "title_align": "left",
+             "time": {
+               "live_span": "1h"
+             },
+             "yaxis": {
+               "min": "0",
+               "label": "Operations/sec"
+             }
+           },
+           "layout": {
+             "x": 6,
+             "y": 4,
+             "width": 6,
+             "height": 3
+           }
+         }
+       ],
+       "layout_type": "free",
+       "is_read_only": false,
+       "notify_list": [],
+       "template_variables": []
      }')
 
-# Check if read monitor was created successfully
-if echo "$READ_RESPONSE" | grep -q '"id"'; then
-    READ_MONITOR_ID=$(echo "$READ_RESPONSE" | grep -o '"id":[0-9]*' | cut -d':' -f2)
-    echo "✓ Disk read monitor created successfully (ID: $READ_MONITOR_ID)"
+# Extract HTTP status code
+HTTP_CODE=$(echo "$DASHBOARD_RESPONSE" | grep "HTTP_CODE:" | cut -d':' -f2)
+RESPONSE_BODY=$(echo "$DASHBOARD_RESPONSE" | sed '/HTTP_CODE:/d')
+
+# Check HTTP status code
+if [[ "$HTTP_CODE" -eq 200 ]] || [[ "$HTTP_CODE" -eq 201 ]]; then
+    # Extract dashboard ID from response
+    if echo "$RESPONSE_BODY" | grep -q '"id"'; then
+        DASHBOARD_ID=$(echo "$RESPONSE_BODY" | grep -o '"id":"[^"]*' | cut -d'"' -f4)
+        echo "✓ Dashboard created successfully!"
+        echo "Dashboard ID: $DASHBOARD_ID"
+        
+        # Save dashboard ID to file (only the ID, no extra text)
+        echo "$DASHBOARD_ID" > 2-setup_datadog
+        echo "✓ Dashboard ID saved to 2-setup_datadog file"
+        
+        echo ""
+        echo "Dashboard Details:"
+        echo "- Name: System Performance Dashboard"
+        echo "- Widgets: 4"
+        echo "- URL: https://app.datadoghq.com/dashboard/$DASHBOARD_ID"
+        echo ""
+        echo "Widgets included:"
+        echo "1. CPU Usage (%) - Line chart (system.cpu.user)"
+        echo "2. Memory Usage (%) - Area chart (system.mem.pct_usable)"
+        echo "3. Current System Load - Single value (system.load.1)"
+        echo "4. Disk I/O Operations - Bar chart (system.io.r_s, system.io.w_s)"
+        echo ""
+        echo "File contents:"
+        echo "$(cat 2-setup_datadog)"
+        
+    else
+        echo "✗ Failed to extract dashboard ID from response"
+        echo "Response: $RESPONSE_BODY"
+        exit 1
+    fi
 else
-    echo "✗ Failed to create disk read monitor"
-    echo "Response: $READ_RESPONSE"
+    echo "✗ Failed to create dashboard (HTTP $HTTP_CODE)"
+    echo "Response: $RESPONSE_BODY"
+    
+    # Common error troubleshooting
+    if [[ "$HTTP_CODE" -eq 403 ]]; then
+        echo ""
+        echo "Troubleshooting 403 Forbidden:"
+        echo "- Check that your API key and Application key are correct"
+        echo "- Verify you have permission to create dashboards"
+        echo "- Ensure you're using the correct Datadog site (US1)"
+    elif [[ "$HTTP_CODE" -eq 401 ]]; then
+        echo ""
+        echo "Troubleshooting 401 Unauthorized:"
+        echo "- Verify your API key is correct"
+        echo "- Check that your Application key is valid"
+    fi
+    exit 1
 fi
-
-echo ""
-echo "Creating monitor for disk write requests..."
-
-# Monitor for disk write requests per second  
-WRITE_RESPONSE=$(curl -s -X POST "https://api.datadoghq.com/api/v1/monitor" \
-     -H "Content-Type: application/json" \
-     -H "DD-API-KEY: $API_KEY" \
-     -H "DD-APPLICATION-KEY: $APP_KEY" \
-     -d '{
-       "type": "metric alert",
-       "query": "avg(last_5m):avg:system.io.w_s{*} > 50",
-       "name": "High Disk Write Requests",
-       "message": "Disk write requests per second is high: {{value}} writes/sec on {{host.name}}.\n\nThis may indicate:\n- Heavy logging activity\n- Database write operations\n- File uploads/downloads\n- Backup operations\n\nConsider investigating write patterns and potentially optimizing I/O or scaling storage.",
-       "tags": ["service:system", "team:infrastructure", "alert:disk-io"],
-       "options": {
-         "thresholds": {
-           "critical": 50,
-           "warning": 40
-         },
-         "notify_no_data": false,
-         "renotify_interval": 60,
-         "timeout_h": 0,
-         "include_tags": true,
-         "require_full_window": false,
-         "new_host_delay": 300,
-         "evaluation_delay": 60
-       }
-     }')
-
-# Check if write monitor was created successfully
-if echo "$WRITE_RESPONSE" | grep -q '"id"'; then
-    WRITE_MONITOR_ID=$(echo "$WRITE_RESPONSE" | grep -o '"id":[0-9]*' | cut -d':' -f2)
-    echo "✓ Disk write monitor created successfully (ID: $WRITE_MONITOR_ID)"
-else
-    echo "✗ Failed to create disk write monitor"
-    echo "Response: $WRITE_RESPONSE"
-fi
-
-echo ""
-echo "=== Summary ==="
-echo "✓ Disk I/O monitors setup complete!"
-echo ""
-echo "Monitors created:"
-echo "1. High Disk Read Requests (system.io.r_s)"
-echo "   - Warning: 80 reads/sec"
-echo "   - Critical: 100 reads/sec"
-echo ""
-echo "2. High Disk Write Requests (system.io.w_s)"
-echo "   - Warning: 40 writes/sec" 
-echo "   - Critical: 50 writes/sec"
-echo ""
-echo "View your monitors at: https://app.datadoghq.com/monitors"
-echo "Check metrics at: https://app.datadoghq.com/metric/explorer"
-echo ""
-echo "To test the monitors, you can generate disk activity:"
-echo "  sudo dd if=/dev/zero of=/tmp/test_write bs=1M count=100"
-echo "  sudo dd if=/tmp/test_write of=/dev/null bs=1M"
-echo "  rm /tmp/test_write"
